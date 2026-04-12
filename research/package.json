@@ -1,0 +1,16 @@
+{
+  "name": "trending-research-agent",
+  "version": "1.0.0",
+  "description": "Claude-powered weekly food trend research agent",
+  "main": "research-agent.js",
+  "type": "module",
+  "scripts": {
+    "research": "node research-agent.js",
+    "setup": "node -e \"require('fs').writeFileSync('.env', 'ANTHROPIC_API_KEY=your_key_here\\n')\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.0"
+  }
+}

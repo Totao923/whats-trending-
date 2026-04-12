@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — What's Trending</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a0a;
+      color: #f1f5f9;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .admin-header {
+      background: #111827;
+      border-bottom: 1px solid #1f2937;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .admin-header h1 { font-size: 1rem; font-weight: 700; }
+    .admin-header span { font-size: 0.8rem; color: #6b7280; margin-left: 8px; }
+
+    .header-btns { display: flex; gap: 8px; }
+
+    .btn { padding: 7px 14px; border-radius: 7px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; transition: background 0.15s; }
+    .btn-green  { background: #10b981; color: #fff; }
+    .btn-green:hover  { background: #059669; }
+    .btn-gray   { background: #1f2937; color: #d1d5db; border: 1px solid #374151; }
+    .btn-gray:hover   { background: #374151; }
+    .btn-red    { background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; }
+    .btn-red:hover    { background: #991b1b; }
+    .btn-sm     { padding: 5px 10px; font-size: 0.78rem; }
+
+    /* ── Layout ── */
+    .admin-body { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+    /* ── Table ── */
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+
+    .items-table { width: 100%; border-collapse: collapse; }
+    .items-table th {
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6b7280;
+      padding: 8px 12px;
+      border-bottom: 1px solid #1f2937;
+    }
+    .items-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #111827;
+      font-size: 0.85rem;
+      vertical-align: middle;
+    }
+    .items-table tr:hover td { background: #111827; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-kitchen { background: #1e3a5f; color: #60a5fa; }
+    .badge-bakery  { background: #3d2c00; color: #fbbf24; }
+    .badge-grocery { background: #2d1b69; color: #c084fc; }
+
+    .score-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: #1f2937;
+      color: #10b981;
+    }
+
+    .action-btns { display: flex; gap: 6px; }
+
+    /* ── Modal / Form ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .overlay.hidden { display: none; }
+
+    .form-modal {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 28px;
+    }
+
+    .form-modal h2 { font-size: 1.1rem; margin-bottom: 20px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid .full { grid-column: 1 / -1; }
+
+    .field label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9ca3af;
+      margin-bottom: 5px;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 7px;
+      padding: 9px 12px;
+      color: #f1f5f9;
+      font-size: 0.875rem;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus { border-color: #10b981; }
+    .field textarea { resize: vertical; min-height: 80px; }
+
+    .field .hint {
+      font-size: 0.72rem;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #1f2937;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #10b981;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: transform 0.25s;
+      z-index: 999;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #991b1b; }
+
+    /* ── Confirm ── */
+    .confirm-modal {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 12px;
+      padding: 28px;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+    }
+    .confirm-modal h3 { margin-bottom: 10px; }
+    .confirm-modal p  { font-size: 0.85rem; color: #9ca3af; margin-bottom: 20px; }
+    .confirm-actions  { display: flex; gap: 10px; justify-content: center; }
+
+    /* ── Empty ── */
+    .empty { text-align: center; padding: 60px 20px; color: #6b7280; font-size: 0.9rem; }
+
+    /* ── Access denied ── */
+    #access-denied { display: none; text-align: center; padding: 80px 20px; }
+    #access-denied h2 { margin-bottom: 8px; }
+    #access-denied p  { color: #6b7280; font-size: 0.9rem; }
+
+    /* ── Research Agent ── */
+    .research-overlay {
+      position: fixed; inset: 0;
+      background: #0a0a0a;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .research-overlay.hidden { display: none; }
+
+    .research-header {
+      background: #111827;
+      border-bottom: 1px solid #1f2937;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .research-header h2 { font-size: 1rem; font-weight: 700; }
+
+    .research-body { flex: 1; overflow-y: auto; padding: 28px 24px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+    .research-status {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+    }
+
+    .research-status .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #1f2937;
+      border-top-color: #10b981;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .research-results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .research-card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .research-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .research-card-name { font-size: 0.95rem; font-weight: 700; color: #f1f5f9; line-height: 1.3; }
+    .research-card-tagline { font-size: 0.78rem; color: #9ca3af; margin-top: 2px; }
+    .research-card-desc { font-size: 0.8rem; color: #9ca3af; line-height: 1.5; }
+
+    .research-card-meta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .research-card-footer {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 10px;
+      border-top: 1px solid #1f2937;
+      margin-top: auto;
+    }
+
+    /* ── Tabs ── */
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #6b7280;
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 14px 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn:hover { color: #d1d5db; }
+    .tab-btn.active { color: #10b981; border-bottom-color: #10b981; }
+
+    /* ── User table ── */
+    .role-badge { padding: 2px 8px; border-radius: 99px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+    .role-admin  { background: #14532d; color: #4ade80; }
+    .role-user   { background: #1f2937; color: #9ca3af; }
+
+    /* ── Temp password box ── */
+    .temp-pass-box {
+      background: #0f2218;
+      border: 1px solid #10b981;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 16px;
+      display: none;
+    }
+    .temp-pass-box p { font-size: 0.8rem; color: #9ca3af; margin-bottom: 6px; }
+    .temp-pass-box strong { font-size: 1rem; color: #4ade80; font-family: monospace; letter-spacing: 0.05em; }
+
+    /* ── Video rows ── */
+    .video-row {
+      display: grid;
+      grid-template-columns: 120px 1fr 1fr auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      background: #1a2233;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .video-row select,
+    .video-row input {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: #f1f5f9;
+      font-size: 0.82rem;
+      outline: none;
+      width: 100%;
+    }
+    .video-row select:focus,
+    .video-row input:focus { border-color: #10b981; }
+    .btn-remove-video {
+      background: none;
+      border: none;
+      color: #6b7280;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    .btn-remove-video:hover { color: #ef4444; background: #1f2937; }
+  </style>
+</head>
+<body>
+
+<div class="admin-header">
+  <div>
+    <span>🔥</span>
+    <strong>What's Trending</strong>
+    <span>— Admin Panel</span>
+  </div>
+  <div class="header-btns">
+    <button class="btn btn-green" id="btn-add-new" style="display:none">+ Add Trend</button>
+    <button class="btn btn-gray" id="btn-run-agent">🔍 Research Agent</button>
+    <a href="index.html" class="btn btn-gray" style="text-decoration:none">← Back to App</a>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div style="background:#111827;border-bottom:1px solid #1f2937;padding:0 24px;display:flex;gap:0">
+  <button class="tab-btn active" id="tab-trends" data-tab="trends">Trends</button>
+  <button class="tab-btn" id="tab-users" data-tab="users">Users</button>
+</div>
+
+<div class="admin-body" id="admin-body">
+  <div class="empty">Loading…</div>
+</div>
+
+<!-- Access denied message -->
+<div id="access-denied">
+  <h2>Access Denied</h2>
+  <p>You need admin privileges to view this page.</p>
+  <a href="index.html" class="btn btn-gray" style="text-decoration:none;display:inline-block;margin-top:16px">← Back to App</a>
+</div>
+
+<!-- ── Add / Edit Form Overlay ── -->
+<div class="overlay hidden" id="form-overlay">
+  <div class="form-modal">
+    <h2 id="form-title">Add New Trend</h2>
+    <div class="form-grid">
+
+      <div class="field full">
+        <label>ID</label>
+        <input type="text" id="f-id" placeholder="e.g. k005 or b005" />
+        <div class="hint">Short unique ID. Prefix: k=kitchen, b=bakery, g=grocery</div>
+      </div>
+
+      <div class="field">
+        <label>Category</label>
+        <select id="f-category">
+          <option value="kitchen">Kitchen</option>
+          <option value="bakery">Bakery</option>
+          <option value="grocery">Grocery</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Viral Score (0–100)</label>
+        <input type="number" id="f-viral-score" min="0" max="100" />
+      </div>
+
+      <div class="field full">
+        <label>Name</label>
+        <input type="text" id="f-name" placeholder="Trend name" />
+      </div>
+
+      <div class="field full">
+        <label>Tagline</label>
+        <input type="text" id="f-tagline" placeholder="Short catchy description" />
+      </div>
+
+      <div class="field">
+        <label>Trend Direction</label>
+        <select id="f-trend">
+          <option value="rising">Rising ↑</option>
+          <option value="steady">Steady →</option>
+          <option value="falling">Falling ↓</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Difficulty (1–3)</label>
+        <select id="f-difficulty">
+          <option value="1">1 — Easy</option>
+          <option value="2">2 — Medium</option>
+          <option value="3">3 — Hard</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Weekly Mentions</label>
+        <input type="number" id="f-weekly-mentions" placeholder="e.g. 2500000" />
+      </div>
+
+      <div class="field">
+        <label>Estimated Cost</label>
+        <input type="text" id="f-estimated-cost" placeholder="e.g. $8–12" />
+      </div>
+
+      <div class="field">
+        <label>Prep Time</label>
+        <input type="text" id="f-prep-time" placeholder="e.g. 30 min" />
+      </div>
+
+      <div class="field">
+        <label>Servings</label>
+        <input type="text" id="f-servings" placeholder="e.g. 4" />
+      </div>
+
+      <div class="field full">
+        <label>Platforms</label>
+        <input type="text" id="f-platforms" placeholder="tiktok, youtube, instagram, x" />
+        <div class="hint">Comma-separated: tiktok, youtube, instagram, x</div>
+      </div>
+
+      <div class="field full">
+        <label>Hashtags</label>
+        <input type="text" id="f-hashtags" placeholder="#HashtagOne, #HashtagTwo" />
+        <div class="hint">Comma-separated</div>
+      </div>
+
+      <div class="field full">
+        <label>Key Ingredients</label>
+        <input type="text" id="f-ingredients" placeholder="Ingredient 1, Ingredient 2" />
+        <div class="hint">Comma-separated</div>
+      </div>
+
+      <div class="field full">
+        <label>Store Sections</label>
+        <input type="text" id="f-store-section" placeholder="Dairy, Produce, Frozen" />
+        <div class="hint">Comma-separated</div>
+      </div>
+
+      <div class="field full">
+        <label>Description</label>
+        <textarea id="f-description" placeholder="Full trend description…"></textarea>
+      </div>
+
+      <div class="field full">
+        <label>Supermarket Opportunity</label>
+        <textarea id="f-supermarket-angle" placeholder="How stores can capitalize on this trend…"></textarea>
+      </div>
+
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-gray" id="btn-cancel-form">Cancel</button>
+      <button class="btn btn-green" id="btn-save-form">Save Trend</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm Delete Overlay ── -->
+<div class="overlay hidden" id="confirm-overlay">
+  <div class="confirm-modal">
+    <h3>Delete Trend?</h3>
+    <p id="confirm-name">This cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-gray" id="btn-cancel-delete">Cancel</button>
+      <button class="btn btn-red" id="btn-confirm-delete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Videos Modal ── -->
+<div class="overlay hidden" id="videos-overlay">
+  <div class="form-modal" style="max-width:500px">
+    <h2 style="margin-bottom:4px" id="videos-modal-title">Manage Videos</h2>
+    <p style="font-size:0.8rem;color:#6b7280;margin-bottom:20px">Up to 3 video links. YouTube links show a thumbnail in the app.</p>
+
+    <div id="videos-list"></div>
+
+    <button class="btn btn-gray" id="btn-add-video" type="button" style="margin-top:10px;width:100%">+ Add Video</button>
+
+    <div class="form-actions">
+      <button class="btn btn-gray" id="btn-cancel-videos">Cancel</button>
+      <button class="btn btn-green" id="btn-save-videos">Save Videos</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Research Agent Overlay ── -->
+<div class="research-overlay hidden" id="research-overlay">
+  <div class="research-header">
+    <h2>🔍 Research Agent — <span id="research-date"></span></h2>
+    <button class="btn btn-gray" id="btn-close-research">✕ Close</button>
+  </div>
+  <div class="research-body" id="research-body">
+    <div class="research-status">
+      <div class="spinner"></div>
+      <p>Researching today's food trends across TikTok, YouTube, Instagram & X…</p>
+      <p style="font-size:0.75rem;margin-top:8px">This takes about 15–20 seconds</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Create User Modal ── -->
+<div class="overlay hidden" id="create-user-overlay">
+  <div class="form-modal" style="max-width:440px">
+    <h2 style="margin-bottom:4px">Create New User</h2>
+    <p style="font-size:0.8rem;color:#6b7280;margin-bottom:20px">A temporary password will be generated. Share it with the user — they'll be asked to set a new password on first login.</p>
+
+    <div class="field" style="margin-bottom:16px">
+      <label>Email</label>
+      <input type="email" id="nu-email" placeholder="user@company.com" />
+    </div>
+
+    <div class="field" style="margin-bottom:0">
+      <label>Role</label>
+      <select id="nu-role">
+        <option value="user">User — can view trends</option>
+        <option value="admin">Admin — can manage trends & users</option>
+      </select>
+    </div>
+
+    <div class="temp-pass-box" id="temp-pass-box">
+      <p>Share this temporary password with the user:</p>
+      <strong id="temp-pass-display"></strong>
+      <p style="margin-top:8px;font-size:0.75rem;color:#6b7280">The user will be prompted to change it on first sign-in.</p>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-gray" id="btn-cancel-create-user">Cancel</button>
+      <button class="btn btn-green" id="btn-create-user">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="admin-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(async function () {
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  // ── Auth check ──────────────────────────────────────────
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const user = session.user;
+  if (!user.user_metadata || user.user_metadata.role !== 'admin') {
+    document.getElementById('admin-body').style.display = 'none';
+    document.getElementById('access-denied').style.display = 'block';
+    document.getElementById('btn-add-new').style.display = 'none';
+    return;
+  }
+
+  // Admin client (service role — bypasses RLS, for user management only)
+  const adminDb = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+  // ── Tabs ──────────────────────────────────────────────────
+  let currentTab = 'trends';
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTab = btn.dataset.tab;
+      if (currentTab === 'trends') {
+        document.getElementById('btn-add-new').style.display = '';
+        loadItems();
+      } else {
+        document.getElementById('btn-add-new').style.display = 'none';
+        loadUsers();
+      }
+    });
+  });
+
+  // ── State ────────────────────────────────────────────────
+  let items = [];
+  let editingId = null;   // null = new item, string = editing existing
+  let deletingId = null;
+
+  // ── DOM ──────────────────────────────────────────────────
+  const adminBody      = document.getElementById('admin-body');
+  const formOverlay    = document.getElementById('form-overlay');
+  const confirmOverlay = document.getElementById('confirm-overlay');
+  const toast          = document.getElementById('toast');
+
+  // ── Load & render items ──────────────────────────────────
+  async function loadItems() {
+    const { data, error } = await db.from('trending_items').select('*').order('viral_score', { ascending: false });
+    if (error) { showToast('Failed to load items', true); return; }
+    items = data || [];
+    renderTable();
+  }
+
+  function renderTable() {
+    if (items.length === 0) {
+      adminBody.innerHTML = '<div class="empty">No trends yet. Click "+ Add Trend" to get started.</div>';
+      return;
+    }
+
+    adminBody.innerHTML = `
+      <div class="section-title">${items.length} Current Trends</div>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Score</th>
+            <th>Trend</th>
+            <th>Mentions</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="items-tbody"></tbody>
+      </table>`;
+
+    const tbody = document.getElementById('items-tbody');
+    items.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="color:#6b7280;font-family:monospace">${item.id}</td>
+        <td><strong>${esc(item.name)}</strong></td>
+        <td><span class="badge badge-${item.category}">${item.category}</span></td>
+        <td><span class="score-pill">${item.viral_score}</span></td>
+        <td style="color:${item.trend==='rising'?'#10b981':item.trend==='falling'?'#ef4444':'#9ca3af'}">
+          ${item.trend === 'rising' ? '↑' : item.trend === 'steady' ? '→' : '↓'} ${item.trend}
+        </td>
+        <td>${formatM(item.weekly_mentions)}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-gray btn-sm" data-edit="${item.id}">Edit</button>
+            <button class="btn btn-gray btn-sm" data-videos="${item.id}" title="Manage video links">🎬 Videos${item.videos && item.videos.length ? ` (${item.videos.length})` : ''}</button>
+            <button class="btn btn-red btn-sm" data-delete="${item.id}">Delete</button>
+          </div>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+
+    // Wire up edit/delete/videos buttons
+    tbody.querySelectorAll('[data-edit]').forEach(btn => {
+      btn.addEventListener('click', () => openEditForm(btn.dataset.edit));
+    });
+    tbody.querySelectorAll('[data-delete]').forEach(btn => {
+      btn.addEventListener('click', () => openConfirmDelete(btn.dataset.delete));
+    });
+    tbody.querySelectorAll('[data-videos]').forEach(btn => {
+      btn.addEventListener('click', () => openVideosModal(btn.dataset.videos));
+    });
+  }
+
+  // ── Form helpers ─────────────────────────────────────────
+  function splitCSV(str) {
+    return str.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  // ── Video management ──────────────────────────────────────
+  function renderVideosList(videos) {
+    const list = document.getElementById('videos-list');
+    list.innerHTML = '';
+    (videos || []).forEach((v, i) => addVideoRow(v, i));
+  }
+
+  function addVideoRow(v = {}, index) {
+    const list = document.getElementById('videos-list');
+    if (list.children.length >= 3) return;
+
+    const row = document.createElement('div');
+    row.className = 'video-row';
+    row.innerHTML = `
+      <select class="v-platform">
+        <option value="tiktok"    ${v.platform==='tiktok'    ? 'selected':''}>TikTok</option>
+        <option value="youtube"   ${v.platform==='youtube'   ? 'selected':''}>YouTube</option>
+        <option value="instagram" ${v.platform==='instagram' ? 'selected':''}>Instagram</option>
+        <option value="x"         ${v.platform==='x'         ? 'selected':''}>X</option>
+      </select>
+      <input class="v-title" type="text" placeholder="Video title" value="${esc(v.title||'')}" />
+      <input class="v-url"   type="url"  placeholder="https://..." value="${esc(v.url||'')}" />
+      <button class="btn-remove-video" type="button" title="Remove">×</button>`;
+
+    row.querySelector('.btn-remove-video').addEventListener('click', () => row.remove());
+    list.appendChild(row);
+  }
+
+  function getVideosFromForm() {
+    return Array.from(document.querySelectorAll('.video-row')).map(row => ({
+      platform: row.querySelector('.v-platform').value,
+      title:    row.querySelector('.v-title').value.trim(),
+      url:      row.querySelector('.v-url').value.trim()
+    })).filter(v => v.url);
+  }
+
+  function openAddForm() {
+    editingId = null;
+    document.getElementById('form-title').textContent = 'Add New Trend';
+    clearForm();
+    document.getElementById('f-id').disabled = false;
+    renderVideosList([]);
+    formOverlay.classList.remove('hidden');
+  }
+
+  function openEditForm(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    editingId = id;
+    document.getElementById('form-title').textContent = 'Edit Trend';
+
+    document.getElementById('f-id').value             = item.id;
+    document.getElementById('f-id').disabled          = true;
+    document.getElementById('f-category').value       = item.category;
+    document.getElementById('f-name').value           = item.name || '';
+    document.getElementById('f-tagline').value        = item.tagline || '';
+    document.getElementById('f-viral-score').value    = item.viral_score || '';
+    document.getElementById('f-trend').value          = item.trend || 'rising';
+    document.getElementById('f-difficulty').value     = item.difficulty || 1;
+    document.getElementById('f-weekly-mentions').value= item.weekly_mentions || '';
+    document.getElementById('f-estimated-cost').value = item.estimated_cost || '';
+    document.getElementById('f-prep-time').value      = item.prep_time || '';
+    document.getElementById('f-servings').value       = item.servings || '';
+    document.getElementById('f-platforms').value      = (item.platforms || []).join(', ');
+    document.getElementById('f-hashtags').value       = (item.hashtags || []).join(', ');
+    document.getElementById('f-ingredients').value    = (item.key_ingredients || []).join(', ');
+    document.getElementById('f-store-section').value  = (item.store_section || []).join(', ');
+    document.getElementById('f-description').value    = item.description || '';
+    document.getElementById('f-supermarket-angle').value = item.supermarket_angle || '';
+    renderVideosList(item.videos || []);
+
+    formOverlay.classList.remove('hidden');
+  }
+
+  function clearForm() {
+    ['f-id','f-name','f-tagline','f-viral-score','f-weekly-mentions',
+     'f-estimated-cost','f-prep-time','f-servings','f-platforms',
+     'f-hashtags','f-ingredients','f-store-section','f-description','f-supermarket-angle']
+      .forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-category').value   = 'kitchen';
+    document.getElementById('f-trend').value      = 'rising';
+    document.getElementById('f-difficulty').value = '1';
+  }
+
+  function closeForm() {
+    formOverlay.classList.add('hidden');
+    editingId = null;
+  }
+
+  async function saveForm() {
+    const id = document.getElementById('f-id').value.trim();
+    if (!id) { showToast('ID is required', true); return; }
+
+    const row = {
+      id,
+      category:         document.getElementById('f-category').value,
+      name:             document.getElementById('f-name').value.trim(),
+      tagline:          document.getElementById('f-tagline').value.trim(),
+      viral_score:      parseInt(document.getElementById('f-viral-score').value) || 0,
+      trend:            document.getElementById('f-trend').value,
+      difficulty:       parseInt(document.getElementById('f-difficulty').value) || 1,
+      weekly_mentions:  parseInt(document.getElementById('f-weekly-mentions').value) || 0,
+      estimated_cost:   document.getElementById('f-estimated-cost').value.trim(),
+      prep_time:        document.getElementById('f-prep-time').value.trim(),
+      servings:         document.getElementById('f-servings').value.trim(),
+      platforms:        splitCSV(document.getElementById('f-platforms').value),
+      hashtags:         splitCSV(document.getElementById('f-hashtags').value),
+      key_ingredients:  splitCSV(document.getElementById('f-ingredients').value),
+      store_section:    splitCSV(document.getElementById('f-store-section').value),
+      description:      document.getElementById('f-description').value.trim(),
+      supermarket_angle:document.getElementById('f-supermarket-angle').value.trim(),
+      added_week:       String(new Date().getFullYear()),
+      videos:           getVideosFromForm()
+    };
+
+    let error;
+    if (editingId) {
+      // Update existing
+      ({ error } = await db.from('trending_items').update(row).eq('id', editingId));
+    } else {
+      // Insert new
+      ({ error } = await db.from('trending_items').insert(row));
+    }
+
+    if (error) {
+      showToast('Save failed: ' + error.message, true);
+    } else {
+      showToast(editingId ? 'Trend updated!' : 'Trend added!');
+      closeForm();
+      loadItems();
+    }
+  }
+
+  // ── Videos Modal ─────────────────────────────────────────
+  let videosItemId = null;
+  const videosOverlay = document.getElementById('videos-overlay');
+
+  function openVideosModal(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    videosItemId = id;
+    document.getElementById('videos-modal-title').textContent = item.name;
+    renderVideosList(item.videos || []);
+    videosOverlay.classList.remove('hidden');
+  }
+
+  async function saveVideos() {
+    const videos = getVideosFromForm();
+    const { error } = await db.from('trending_items')
+      .update({ videos })
+      .eq('id', videosItemId);
+
+    if (error) {
+      showToast('Save failed: ' + error.message, true);
+    } else {
+      showToast('Videos saved!');
+      videosOverlay.classList.add('hidden');
+      videosItemId = null;
+      loadItems();
+    }
+  }
+
+  document.getElementById('btn-add-video').addEventListener('click', () => {
+    if (document.querySelectorAll('.video-row').length < 3) addVideoRow();
+    else showToast('Max 3 videos per trend', true);
+  });
+  document.getElementById('btn-save-videos').addEventListener('click', saveVideos);
+  document.getElementById('btn-cancel-videos').addEventListener('click', () => {
+    videosOverlay.classList.add('hidden');
+    videosItemId = null;
+  });
+  videosOverlay.addEventListener('click', e => {
+    if (e.target === videosOverlay) { videosOverlay.classList.add('hidden'); videosItemId = null; }
+  });
+
+  // ── Delete ───────────────────────────────────────────────
+  function openConfirmDelete(id) {
+    deletingId = id;
+    const item = items.find(i => i.id === id);
+    document.getElementById('confirm-name').textContent =
+      item ? `"${item.name}" will be permanently deleted.` : 'This cannot be undone.';
+    confirmOverlay.classList.remove('hidden');
+  }
+
+  async function confirmDelete() {
+    if (!deletingId) return;
+    const { error } = await db.from('trending_items').delete().eq('id', deletingId);
+    if (error) {
+      showToast('Delete failed: ' + error.message, true);
+    } else {
+      showToast('Trend deleted');
+      confirmOverlay.classList.add('hidden');
+      deletingId = null;
+      loadItems();
+    }
+  }
+
+  // ── Toast ────────────────────────────────────────────────
+  function showToast(msg, isError = false) {
+    toast.textContent = msg;
+    toast.className = 'toast' + (isError ? ' error' : '');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2800);
+  }
+
+  // ── Helpers ──────────────────────────────────────────────
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function formatM(num) {
+    if (!num) return '—';
+    if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'M';
+    if (num >= 1_000)     return (num / 1_000).toFixed(0) + 'K';
+    return num.toString();
+  }
+
+  // ── Research Agent ───────────────────────────────────────
+  const researchOverlay = document.getElementById('research-overlay');
+  const researchBody    = document.getElementById('research-body');
+
+  document.getElementById('btn-run-agent').addEventListener('click', openResearchAgent);
+  document.getElementById('btn-close-research').addEventListener('click', () => {
+    researchOverlay.classList.add('hidden');
+  });
+
+  async function openResearchAgent() {
+    const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    document.getElementById('research-date').textContent = today;
+    researchBody.innerHTML = `
+      <div class="research-status">
+        <div class="spinner"></div>
+        <p>Researching today's food trends across TikTok, YouTube, Instagram & X…</p>
+        <p style="font-size:0.75rem;margin-top:8px">This takes about 15–20 seconds</p>
+      </div>`;
+    researchOverlay.classList.remove('hidden');
+
+    try {
+      const results = await runResearchAgent(today);
+      renderResearchResults(results);
+    } catch (err) {
+      researchBody.innerHTML = `
+        <div class="research-status">
+          <p style="color:#ef4444">⚠️ Research failed: ${esc(err.message)}</p>
+          <p style="font-size:0.8rem;margin-top:8px;color:#6b7280">Check that your Anthropic API key is set in admin-config.js</p>
+        </div>`;
+    }
+  }
+
+  async function runResearchAgent(today) {
+    const prompt = `You are a food trend research agent for a supermarket chain. Today is ${today}.
+
+Your job: identify 4-6 food items that are currently trending or gaining momentum on TikTok, YouTube, Instagram, and X. Focus on dishes, bakery items, and grocery products that supermarkets can act on this week.
+
+Return ONLY a valid JSON array. No markdown, no explanation, just the JSON.
+
+Each item must follow this exact structure:
+{
+  "name": "Full trend name",
+  "category": "kitchen OR bakery OR grocery",
+  "tagline": "One punchy sentence",
+  "description": "2-3 sentences explaining why this is trending and what makes it shareable",
+  "viralScore": 70-99,
+  "trend": "rising OR steady OR falling",
+  "platforms": ["tiktok", "youtube", "instagram", "x"],
+  "hashtags": ["#Hashtag1", "#Hashtag2", "#Hashtag3"],
+  "keyIngredients": ["Ingredient 1", "Ingredient 2", "Ingredient 3"],
+  "difficulty": 1,
+  "prepTime": "X min",
+  "servings": "X",
+  "supermarketAngle": "Specific actionable advice for supermarket teams on endcaps, cross-merch, or in-store bakery",
+  "storeSection": ["Section 1", "Section 2"],
+  "estimatedCost": "$X–Y",
+  "weeklyMentions": 1000000
+}`;
+
+    // Local dev → proxy.py on :3001, production → Vercel API route
+    const apiUrl = window.location.hostname === 'localhost'
+      ? 'http://localhost:3001'
+      : '/api/research';
+
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error ${res.status}`);
+    }
+
+    const data = await res.json();
+    const text = data.content[0].text.trim();
+
+    // Strip markdown code fences if present
+    const clean = text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+    return JSON.parse(clean);
+  }
+
+  function renderResearchResults(items) {
+    if (!items || items.length === 0) {
+      researchBody.innerHTML = '<div class="research-status"><p>No results returned. Try again.</p></div>';
+      return;
+    }
+
+    const PLATFORM_COLORS = {
+      tiktok: '#ff0050', youtube: '#ff0000', instagram: '#e1306c', x: '#1d9bf0'
+    };
+    const CAT_COLORS = { kitchen: '#60a5fa', bakery: '#fbbf24', grocery: '#c084fc' };
+    const PLATFORM_LABELS = { tiktok: 'TikTok', youtube: 'YouTube', instagram: 'Instagram', x: 'X' };
+
+    researchBody.innerHTML = `
+      <p style="color:#6b7280;font-size:0.82rem;margin-bottom:16px">
+        Found ${items.length} trending items. Review each one and click <strong style="color:#10b981">+ Add to App</strong> to include it in this week's trends.
+      </p>
+      <div class="research-results-grid" id="research-results-grid"></div>`;
+
+    const grid = document.getElementById('research-results-grid');
+
+    items.forEach((item, i) => {
+      const catColor  = CAT_COLORS[item.category] || '#9ca3af';
+      const scoreColor = item.viralScore >= 90 ? '#10b981' : item.viralScore >= 70 ? '#fbbf24' : '#9ca3af';
+      const trendIcon  = item.trend === 'rising' ? '↑' : item.trend === 'steady' ? '→' : '↓';
+
+      const card = document.createElement('div');
+      card.className = 'research-card';
+      card.innerHTML = `
+        <div class="research-card-header">
+          <div>
+            <div class="research-card-name">${esc(item.name)}</div>
+            <div class="research-card-tagline">${esc(item.tagline)}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:1.3rem;font-weight:900;color:${scoreColor}">${item.viralScore}</div>
+            <div style="font-size:0.65rem;color:#6b7280">viral score</div>
+          </div>
+        </div>
+
+        <div class="research-card-meta">
+          <span style="background:#1a2233;border:1px solid ${catColor};color:${catColor};padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;text-transform:uppercase">${item.category}</span>
+          <span style="color:${item.trend==='rising'?'#10b981':item.trend==='falling'?'#ef4444':'#9ca3af'};font-size:0.78rem;font-weight:600">${trendIcon} ${item.trend}</span>
+          ${(item.platforms||[]).map(p => `<span style="font-size:0.7rem;color:${PLATFORM_COLORS[p]||'#9ca3af'}">${PLATFORM_LABELS[p]||p}</span>`).join('')}
+        </div>
+
+        <div class="research-card-desc">${esc(item.description)}</div>
+
+        <div>
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:4px">Ingredients</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            ${(item.keyIngredients||[]).map(ing => `<span style="background:#1f2937;border-radius:4px;padding:2px 7px;font-size:0.72rem;color:#9ca3af">${esc(ing)}</span>`).join('')}
+          </div>
+        </div>
+
+        <div style="background:#0f1f14;border:1px solid #1a3d2b;border-radius:7px;padding:10px 12px;font-size:0.78rem;color:#9ca3af;line-height:1.5">
+          <strong style="color:#4ade80;font-size:0.7rem;display:block;margin-bottom:4px">STORE OPPORTUNITY</strong>
+          ${esc(item.supermarketAngle)}
+        </div>
+
+        <div style="display:flex;gap:8px;font-size:0.75rem;color:#6b7280">
+          <span>⏱ ${esc(item.prepTime||'N/A')}</span>
+          <span>·</span>
+          <span>${esc(item.estimatedCost||'')}</span>
+          <span>·</span>
+          <span>${formatM(item.weeklyMentions)} mentions</span>
+        </div>
+
+        <div class="research-card-footer">
+          <button class="btn btn-green btn-sm" data-research-idx="${i}">+ Add to App</button>
+        </div>`;
+
+      grid.appendChild(card);
+    });
+
+    // Wire up Add to App buttons
+    grid.querySelectorAll('[data-research-idx]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = items[parseInt(btn.dataset.researchIdx)];
+        researchOverlay.classList.add('hidden');
+
+        // Switch to trends tab
+        document.getElementById('tab-trends').click();
+
+        // Pre-fill and open the add form
+        setTimeout(() => {
+          openAddForm();
+          // Generate a unique ID suggestion
+          const prefix = item.category === 'kitchen' ? 'k' : item.category === 'bakery' ? 'b' : 'g';
+          document.getElementById('f-id').value             = prefix + Date.now().toString().slice(-3);
+          document.getElementById('f-category').value       = item.category || 'kitchen';
+          document.getElementById('f-name').value           = item.name || '';
+          document.getElementById('f-tagline').value        = item.tagline || '';
+          document.getElementById('f-viral-score').value    = item.viralScore || '';
+          document.getElementById('f-trend').value          = item.trend || 'rising';
+          document.getElementById('f-difficulty').value     = item.difficulty || 1;
+          document.getElementById('f-weekly-mentions').value= item.weeklyMentions || '';
+          document.getElementById('f-estimated-cost').value = item.estimatedCost || '';
+          document.getElementById('f-prep-time').value      = item.prepTime || '';
+          document.getElementById('f-servings').value       = item.servings || '';
+          document.getElementById('f-platforms').value      = (item.platforms||[]).join(', ');
+          document.getElementById('f-hashtags').value       = (item.hashtags||[]).join(', ');
+          document.getElementById('f-ingredients').value    = (item.keyIngredients||[]).join(', ');
+          document.getElementById('f-store-section').value  = (item.storeSection||[]).join(', ');
+          document.getElementById('f-description').value    = item.description || '';
+          document.getElementById('f-supermarket-angle').value = item.supermarketAngle || '';
+        }, 100);
+      });
+    });
+  }
+
+  // ── User Management ──────────────────────────────────────
+  const createUserOverlay = document.getElementById('create-user-overlay');
+
+  async function loadUsers() {
+    adminBody.innerHTML = '<div class="empty">Loading users…</div>';
+
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+      }
+    });
+    const data = await res.json();
+    const users = data.users || [];
+
+    if (users.length === 0) {
+      adminBody.innerHTML = '<div class="empty">No users yet. Click "+ Add User" to create one.</div>';
+      return;
+    }
+
+    adminBody.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="section-title">${users.length} Users</div>
+        <button class="btn btn-green btn-sm" id="btn-open-create-user">+ Add User</button>
+      </div>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Created</th>
+            <th>Last Sign In</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+      </table>`;
+
+    document.getElementById('btn-open-create-user').addEventListener('click', openCreateUser);
+
+    const tbody = document.getElementById('users-tbody');
+    users.forEach(u => {
+      const role = u.user_metadata?.role || 'user';
+      const created = u.created_at ? new Date(u.created_at).toLocaleDateString() : '—';
+      const lastSignIn = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString() : 'Never';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${esc(u.email)}</strong></td>
+        <td><span class="role-badge role-${role}">${role}</span></td>
+        <td style="color:#6b7280;font-size:0.82rem">${created}</td>
+        <td style="color:#6b7280;font-size:0.82rem">${lastSignIn}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-gray btn-sm" data-toggle-role="${u.id}" data-current-role="${role}">
+              Make ${role === 'admin' ? 'User' : 'Admin'}
+            </button>
+            <button class="btn btn-red btn-sm" data-delete-user="${u.id}" data-user-email="${esc(u.email)}">Delete</button>
+          </div>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('[data-toggle-role]').forEach(btn => {
+      btn.addEventListener('click', () => toggleUserRole(btn.dataset.toggleRole, btn.dataset.currentRole));
+    });
+    tbody.querySelectorAll('[data-delete-user]').forEach(btn => {
+      btn.addEventListener('click', () => deleteUser(btn.dataset.deleteUser, btn.dataset.userEmail));
+    });
+  }
+
+  function genTempPassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+    return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  }
+
+  function openCreateUser() {
+    document.getElementById('nu-email').value = '';
+    document.getElementById('nu-role').value = 'user';
+    document.getElementById('temp-pass-box').style.display = 'none';
+    document.getElementById('btn-create-user').style.display = '';
+    createUserOverlay.classList.remove('hidden');
+  }
+
+  async function createUser() {
+    const email = document.getElementById('nu-email').value.trim();
+    const role  = document.getElementById('nu-role').value;
+    if (!email) { showToast('Email is required', true); return; }
+
+    const tempPass = genTempPassword();
+    const btn = document.getElementById('btn-create-user');
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email,
+        password: tempPass,
+        email_confirm: true,
+        user_metadata: { role, force_password_change: true }
+      })
+    });
+
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Create User';
+
+    if (data.error || data.msg) {
+      showToast(data.error || data.msg, true); return;
+    }
+
+    document.getElementById('temp-pass-display').textContent = tempPass;
+    document.getElementById('temp-pass-box').style.display = 'block';
+    document.getElementById('btn-create-user').style.display = 'none';
+    showToast('User created!');
+    loadUsers();
+  }
+
+  async function toggleUserRole(userId, currentRole) {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ user_metadata: { role: newRole } })
+    });
+    if (res.ok) { showToast(`User is now ${newRole}`); loadUsers(); }
+    else showToast('Failed to update role', true);
+  }
+
+  async function deleteUser(userId, email) {
+    if (!confirm(`Delete user ${email}? This cannot be undone.`)) return;
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+      }
+    });
+    if (res.ok || res.status === 200 || res.status === 204) {
+      showToast('User deleted'); loadUsers();
+    } else showToast('Failed to delete user', true);
+  }
+
+  document.getElementById('btn-cancel-create-user').addEventListener('click', () => {
+    createUserOverlay.classList.add('hidden');
+  });
+  document.getElementById('btn-create-user').addEventListener('click', createUser);
+  createUserOverlay.addEventListener('click', e => {
+    if (e.target === createUserOverlay) createUserOverlay.classList.add('hidden');
+  });
+
+  // ── Wire up buttons ──────────────────────────────────────
+  document.getElementById('btn-add-new').addEventListener('click', openAddForm);
+  document.getElementById('btn-cancel-form').addEventListener('click', closeForm);
+  document.getElementById('btn-save-form').addEventListener('click', saveForm);
+  document.getElementById('btn-cancel-delete').addEventListener('click', () => {
+    confirmOverlay.classList.add('hidden');
+    deletingId = null;
+  });
+  document.getElementById('btn-confirm-delete').addEventListener('click', confirmDelete);
+
+  // Close form overlay on background click
+  formOverlay.addEventListener('click', e => { if (e.target === formOverlay) closeForm(); });
+  confirmOverlay.addEventListener('click', e => {
+    if (e.target === confirmOverlay) { confirmOverlay.classList.add('hidden'); deletingId = null; }
+  });
+
+  // ── Init ─────────────────────────────────────────────────
+  document.getElementById('btn-add-new').style.display = '';
+  loadItems();
+
+})();
+</script>
+
+</body>
+</html>

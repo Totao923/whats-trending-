@@ -1,0 +1,42 @@
+{
+  "name": "What's Trending — Weekly Food Trends",
+  "short_name": "Trending Eats",
+  "description": "Weekly trending food, bakery & grocery items for supermarket recreation",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["food", "shopping", "business"],
+  "shortcuts": [
+    {
+      "name": "This Week's Trends",
+      "url": "/?view=dashboard",
+      "description": "View current weekly trending items"
+    },
+    {
+      "name": "Kitchen Dishes",
+      "url": "/?category=kitchen",
+      "description": "Trending kitchen dishes"
+    },
+    {
+      "name": "Bakery",
+      "url": "/?category=bakery",
+      "description": "Trending bakery items"
+    }
+  ]
+}
