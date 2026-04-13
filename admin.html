@@ -1204,19 +1204,46 @@ Each item must have these exact fields:
 
       // 3. Replace trending items
       btn.textContent = '⏳ Saving…';
-      await adminDb.from('trending_items').delete().gte('id', 0);
-      await adminDb.from('trending_items').insert(newItems);
+
+      // Ensure each item has a videos field and no extra fields that could break insert
+      const cleanItems = newItems.map(item => ({
+        category:         item.category,
+        name:             item.name,
+        tagline:          item.tagline || '',
+        viral_score:      item.viral_score || 50,
+        trend:            item.trend || '📈 Rising',
+        platforms:        item.platforms || [],
+        hashtags:         item.hashtags || [],
+        description:      item.description || '',
+        key_ingredients:  item.key_ingredients || [],
+        difficulty:       item.difficulty || 'Easy',
+        prep_time:        item.prep_time || '',
+        servings:         item.servings || '',
+        supermarket_angle: item.supermarket_angle || '',
+        store_section:    item.store_section || [],
+        estimated_cost:   item.estimated_cost || '',
+        weekly_mentions:  item.weekly_mentions || 0,
+        added_week:       item.added_week || wn,
+        videos:           []
+      }));
+
+      const delRes = await adminDb.from('trending_items').delete().not('id', 'is', null);
+      if (delRes.error) throw new Error('Delete failed: ' + delRes.error.message);
+
+      const insRes = await adminDb.from('trending_items').insert(cleanItems);
+      if (insRes.error) throw new Error('Insert failed: ' + insRes.error.message);
 
       // 4. Update meta
       const nextMon = new Date(now);
       nextMon.setDate(now.getDate() + (8 - now.getDay()) % 7 || 7);
-      await adminDb.from('meta').delete().gte('id', 0);
-      await adminDb.from('meta').insert({
+      await adminDb.from('meta').delete().not('id', 'is', null);
+      const metaIns = await adminDb.from('meta').insert({
         week_label:  `Week ${wn}, ${yr}`,
         week_number: wn,
         year:        yr,
         next_update: nextMon.toISOString().split('T')[0]
       });
+      if (metaIns.error) throw new Error('Meta update failed: ' + metaIns.error.message);
 
       alert(`✅ Done! ${newItems.length} new trends added for Week ${wn}, ${yr}.`);
       location.reload();
