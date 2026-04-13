@@ -369,6 +369,7 @@
   <div class="header-btns">
     <button class="btn btn-green" id="btn-add-new" style="display:none">+ Add Trend</button>
     <button class="btn btn-gray" id="btn-run-agent">🔍 Research Agent</button>
+    <button class="btn btn-gray" id="btn-weekly-update">🔄 Update This Week</button>
     <a href="index.html" class="btn btn-gray" style="text-decoration:none">← Back to App</a>
   </div>
 </div>
@@ -1121,6 +1122,27 @@ Each item must follow this exact structure:
       });
     });
   }
+
+  // ── Weekly Auto-Update (manual trigger) ─────────────────
+  document.getElementById('btn-weekly-update').addEventListener('click', async () => {
+    if (!confirm('This will archive this week\'s trends and fetch new ones from Claude. Continue?')) return;
+    const btn = document.getElementById('btn-weekly-update');
+    btn.disabled = true;
+    btn.textContent = '⏳ Updating…';
+    try {
+      const res = await fetch('/api/update-trends', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Update failed');
+      alert(`✅ Updated! ${data.itemsAdded} new trends added for ${data.week}.`);
+      location.reload();
+    } catch (err) {
+      alert('❌ Update failed: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔄 Update This Week';
+    }
+  });
 
   // ── User Management ──────────────────────────────────────
   const createUserOverlay = document.getElementById('create-user-overlay');
