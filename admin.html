@@ -1165,26 +1165,26 @@ Each item must follow this exact structure:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-opus-4-6',
-          max_tokens: 4096,
+          max_tokens: 8000,
           messages: [{ role: 'user', content: `You are a food trend analyst for a supermarket chain research team. Research the top trending food items right now (week of ${now.toDateString()}).
 
-Return ONLY a JSON array of exactly 12 items — 4 per category (kitchen, bakery, grocery). No markdown, no explanation, just raw JSON.
+Return ONLY a JSON array of exactly 12 items — 4 per category (kitchen, bakery, grocery). No markdown, no explanation, just raw JSON. Keep all string values SHORT (under 100 characters each) to fit the token limit.
 
 Each item must have these exact fields:
 {
   "category": "kitchen",
   "name": "Item name",
-  "tagline": "One catchy sentence",
+  "tagline": "One short catchy sentence",
   "viral_score": 75,
   "trend": "🔥 Viral",
   "platforms": ["TikTok","Instagram"],
   "hashtags": ["#example"],
-  "description": "2-3 sentence description",
+  "description": "One or two sentences max.",
   "key_ingredients": ["ingredient1","ingredient2"],
   "difficulty": "Easy",
   "prep_time": "30 mins",
   "servings": "4 servings",
-  "supermarket_angle": "How supermarkets can capitalize on this",
+  "supermarket_angle": "Brief actionable tip for supermarkets.",
   "store_section": ["Produce"],
   "estimated_cost": "$8-12",
   "weekly_mentions": 45000,

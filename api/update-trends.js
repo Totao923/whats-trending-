@@ -80,12 +80,12 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-opus-4-6',
-        max_tokens: 4096,
+        max_tokens: 8000,
         messages: [{
           role: 'user',
           content: `You are a food trend analyst for a supermarket chain research team. Research the top trending food items right now (week of ${now.toDateString()}).
 
-Return ONLY a JSON array of exactly 12 items — 4 per category (kitchen, bakery, grocery). No markdown, no explanation, just raw JSON.
+Return ONLY a JSON array of exactly 12 items — 4 per category (kitchen, bakery, grocery). No markdown, no explanation, just raw JSON. Keep all string values SHORT (under 100 characters each).
 
 Each item must have these exact fields:
 {
