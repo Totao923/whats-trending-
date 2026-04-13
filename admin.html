@@ -1175,19 +1175,26 @@ Each item must follow this exact structure:
       const yr  = now.getFullYear();
       const apiUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '/api/research';
 
+      // Build category list from DB (loaded at page init)
+      const activeCats = allCategories.length > 0
+        ? allCategories.map(c => `${c.id} (${c.label})`).join(', ')
+        : 'kitchen, bakery, grocery';
+
       const claudeRes = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-opus-4-6',
           max_tokens: 8000,
-          messages: [{ role: 'user', content: `You are a food trend analyst for a supermarket chain research team. Research the top trending food items right now (week of ${now.toDateString()}).
+          messages: [{ role: 'user', content: `You are a trend analyst for a supermarket chain research team. Research what is currently trending this week (${now.toDateString()}) across these supermarket departments: ${activeCats}.
 
-Return ONLY a JSON array of exactly 12 items — 4 per category (kitchen, bakery, grocery). No markdown, no explanation, just raw JSON. Keep all string values SHORT (under 100 characters each) to fit the token limit.
+Return ONLY a JSON array of exactly 12 items spread across the most trending departments. No markdown, no explanation, just raw JSON. Keep all string values SHORT (under 100 characters each).
+
+The "category" field must be one of these exact IDs: ${allCategories.map(c => c.id).join(', ')}.
 
 Each item must have these exact fields:
 {
-  "category": "kitchen",
+  "category": "produce",
   "name": "Item name",
   "tagline": "One short catchy sentence",
   "viral_score": 75,
