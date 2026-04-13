@@ -1123,18 +1123,102 @@ Each item must follow this exact structure:
     });
   }
 
-  // ── Weekly Auto-Update (manual trigger) ─────────────────
+  // ── Weekly Auto-Update (manual trigger — runs in browser to avoid serverless timeout) ──
   document.getElementById('btn-weekly-update').addEventListener('click', async () => {
     if (!confirm('This will archive this week\'s trends and fetch new ones from Claude. Continue?')) return;
     const btn = document.getElementById('btn-weekly-update');
     btn.disabled = true;
-    btn.textContent = '⏳ Updating…';
+
+    function weekNum(d) {
+      const date = new Date(d); date.setHours(0,0,0,0);
+      date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+      const w1 = new Date(date.getFullYear(), 0, 4);
+      return 1 + Math.round(((date - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
+    }
+
     try {
-      const res = await fetch('/api/update-trends', { method: 'POST',
-        headers: { 'Content-Type': 'application/json' } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Update failed');
-      alert(`✅ Updated! ${data.itemsAdded} new trends added for ${data.week}.`);
+      // 1. Archive current items
+      btn.textContent = '⏳ Archiving…';
+      const [itemsRes, metaRes] = await Promise.all([
+        adminDb.from('trending_items').select('name'),
+        adminDb.from('meta').select('*').order('id', { ascending: false }).limit(1).single()
+      ]);
+      if (itemsRes.data && itemsRes.data.length > 0) {
+        const m = metaRes.data || {};
+        await adminDb.from('archive').insert({
+          week_label:  m.week_label  || 'Previous Week',
+          week_number: m.week_number || 0,
+          year:        m.year        || new Date().getFullYear(),
+          items:       itemsRes.data.map(i => i.name)
+        });
+      }
+
+      // 2. Call Claude via existing research proxy
+      btn.textContent = '⏳ Calling Claude…';
+      const now = new Date();
+      const wn  = weekNum(now);
+      const yr  = now.getFullYear();
+      const apiUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '/api/research';
+
+      const claudeRes = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-opus-4-6',
+          max_tokens: 4096,
+          messages: [{ role: 'user', content: `You are a food trend analyst for a supermarket chain research team. Research the top trending food items right now (week of ${now.toDateString()}).
+
+Return ONLY a JSON array of exactly 12 items — 4 per category (kitchen, bakery, grocery). No markdown, no explanation, just raw JSON.
+
+Each item must have these exact fields:
+{
+  "category": "kitchen",
+  "name": "Item name",
+  "tagline": "One catchy sentence",
+  "viral_score": 75,
+  "trend": "🔥 Viral",
+  "platforms": ["TikTok","Instagram"],
+  "hashtags": ["#example"],
+  "description": "2-3 sentence description",
+  "key_ingredients": ["ingredient1","ingredient2"],
+  "difficulty": "Easy",
+  "prep_time": "30 mins",
+  "servings": "4 servings",
+  "supermarket_angle": "How supermarkets can capitalize on this",
+  "store_section": ["Produce"],
+  "estimated_cost": "$8-12",
+  "weekly_mentions": 45000,
+  "added_week": ${wn}
+}` }]
+        })
+      });
+
+      if (!claudeRes.ok) {
+        const e = await claudeRes.json().catch(() => ({}));
+        throw new Error(e.error?.message || `Claude error ${claudeRes.status}`);
+      }
+      const claudeData = await claudeRes.json();
+      const raw = claudeData.content[0].text.trim().replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/i,'');
+      const newItems = JSON.parse(raw);
+      if (!Array.isArray(newItems) || newItems.length === 0) throw new Error('Claude returned no items');
+
+      // 3. Replace trending items
+      btn.textContent = '⏳ Saving…';
+      await adminDb.from('trending_items').delete().gte('id', 0);
+      await adminDb.from('trending_items').insert(newItems);
+
+      // 4. Update meta
+      const nextMon = new Date(now);
+      nextMon.setDate(now.getDate() + (8 - now.getDay()) % 7 || 7);
+      await adminDb.from('meta').delete().gte('id', 0);
+      await adminDb.from('meta').insert({
+        week_label:  `Week ${wn}, ${yr}`,
+        week_number: wn,
+        year:        yr,
+        next_update: nextMon.toISOString().split('T')[0]
+      });
+
+      alert(`✅ Done! ${newItems.length} new trends added for Week ${wn}, ${yr}.`);
       location.reload();
     } catch (err) {
       alert('❌ Update failed: ' + err.message);
