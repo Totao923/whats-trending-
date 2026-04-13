@@ -1215,7 +1215,8 @@ Each item must have these exact fields:
       }
 
       // Sanitize items to match DB schema exactly
-      const cleanItems = newItems.map(item => ({
+      const cleanItems = newItems.map((item, idx) => ({
+        id:                idx + 1,
         category:          item.category,
         name:              item.name,
         tagline:           item.tagline || '',
