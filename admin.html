@@ -1205,26 +1205,35 @@ Each item must have these exact fields:
       // 3. Replace trending items
       btn.textContent = '⏳ Saving…';
 
-      // Ensure each item has a videos field and no extra fields that could break insert
+      // Map difficulty string → integer (DB stores 1/2/3)
+      function diffInt(d) {
+        if (typeof d === 'number') return Math.min(3, Math.max(1, Math.round(d)));
+        const s = String(d).toLowerCase();
+        if (s.includes('hard') || s.includes('3')) return 3;
+        if (s.includes('med')  || s.includes('2')) return 2;
+        return 1;
+      }
+
+      // Sanitize items to match DB schema exactly
       const cleanItems = newItems.map(item => ({
-        category:         item.category,
-        name:             item.name,
-        tagline:          item.tagline || '',
-        viral_score:      item.viral_score || 50,
-        trend:            item.trend || '📈 Rising',
-        platforms:        item.platforms || [],
-        hashtags:         item.hashtags || [],
-        description:      item.description || '',
-        key_ingredients:  item.key_ingredients || [],
-        difficulty:       item.difficulty || 'Easy',
-        prep_time:        item.prep_time || '',
-        servings:         item.servings || '',
+        category:          item.category,
+        name:              item.name,
+        tagline:           item.tagline || '',
+        viral_score:       parseInt(item.viral_score) || 50,
+        trend:             item.trend || '📈 Rising',
+        platforms:         item.platforms || [],
+        hashtags:          item.hashtags  || [],
+        description:       item.description || '',
+        key_ingredients:   item.key_ingredients || [],
+        difficulty:        diffInt(item.difficulty),
+        prep_time:         item.prep_time || '',
+        servings:          item.servings  || '',
         supermarket_angle: item.supermarket_angle || '',
-        store_section:    item.store_section || [],
-        estimated_cost:   item.estimated_cost || '',
-        weekly_mentions:  item.weekly_mentions || 0,
-        added_week:       item.added_week || wn,
-        videos:           []
+        store_section:     item.store_section || [],
+        estimated_cost:    item.estimated_cost || '',
+        weekly_mentions:   parseInt(item.weekly_mentions) || 0,
+        added_week:        parseInt(item.added_week) || wn,
+        videos:            []
       }));
 
       const delRes = await adminDb.from('trending_items').delete().not('id', 'is', null);
