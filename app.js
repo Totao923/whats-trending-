@@ -6,13 +6,8 @@
 (function () {
   'use strict';
 
-  // ── Static config (categories & platforms stay local) ────
-  const CATEGORIES = [
-    { id: 'all',     label: 'All Trends',     icon: '🔥' },
-    { id: 'kitchen', label: 'Kitchen Dishes', icon: '🍽' },
-    { id: 'bakery',  label: 'Bakery',         icon: '🥐' },
-    { id: 'grocery', label: 'Grocery Items',  icon: '🛒' }
-  ];
+  // ── Categories — loaded from Supabase at boot ────────────
+  let CATEGORIES = [{ id: 'all', label: 'All Trends', icon: '🔥', color: '#10b981' }];
 
   const PLATFORMS = {
     tiktok:    { label: 'TikTok',    color: '#ff0050', icon: '🎵' },
@@ -80,10 +75,11 @@
     try {
       const db = window._supabase;
 
-      const [metaRes, itemsRes, archiveRes] = await Promise.all([
+      const [metaRes, itemsRes, archiveRes, catsRes] = await Promise.all([
         db.from('meta').select('*').order('id', { ascending: false }).limit(1).single(),
         db.from('trending_items').select('*').order('viral_score', { ascending: false }),
-        db.from('archive').select('*').order('id', { ascending: false })
+        db.from('archive').select('*').order('id', { ascending: false }),
+        db.from('categories').select('*').order('sort_order', { ascending: true })
       ]);
 
       if (metaRes.error)    throw metaRes.error;
@@ -93,6 +89,12 @@
       const meta   = metaRes.data;
       trendItems   = (itemsRes.data || []).map(mapItem);
       archiveWeeks = archiveRes.data || [];
+
+      // Build CATEGORIES with "All" prepended
+      if (catsRes.data && catsRes.data.length > 0) {
+        CATEGORIES = [{ id: 'all', label: 'All Trends', icon: '🔥', color: '#10b981' },
+                      ...catsRes.data];
+      }
 
       hideLoading();
       populateMeta(meta);
@@ -137,15 +139,12 @@
   function populateMeta(meta) {
     if (weekLabelEl)  weekLabelEl.textContent  = meta.week_label || '';
     if (nextUpdateEl) nextUpdateEl.textContent = meta.next_update ? 'Next: ' + formatDate(meta.next_update) : '';
-
-    const kitchenCount = trendItems.filter(i => i.category === 'kitchen').length;
-    const bakeryCount  = trendItems.filter(i => i.category === 'bakery').length;
-    const groceryCount = trendItems.filter(i => i.category === 'grocery').length;
-
-    if (statTotalEl)   statTotalEl.textContent   = trendItems.length;
-    if (statKitchenEl) statKitchenEl.textContent = kitchenCount;
-    if (statBakeryEl)  statBakeryEl.textContent  = bakeryCount;
-    if (statGroceryEl) statGroceryEl.textContent = groceryCount;
+    if (statTotalEl)  statTotalEl.textContent  = trendItems.length;
+    // Legacy stat counters — show top 3 category counts if elements exist
+    const cats = CATEGORIES.filter(c => c.id !== 'all').slice(0, 3);
+    [statKitchenEl, statBakeryEl, statGroceryEl].forEach((el, i) => {
+      if (el && cats[i]) el.textContent = trendItems.filter(t => t.category === cats[i].id).length;
+    });
   }
 
   function formatDate(dateStr) {
@@ -171,6 +170,16 @@
       });
       filterBar.appendChild(btn);
     });
+  }
+
+  // ── Category lookup helpers ───────────────────────────────
+  function getCatColor(catId) {
+    const cat = CATEGORIES.find(c => c.id === catId);
+    return cat ? cat.color : '#6b7280';
+  }
+  function getCatLabel(catId) {
+    const cat = CATEGORIES.find(c => c.id === catId);
+    return cat ? cat.label : catId;
   }
 
   // ── Sorting ───────────────────────────────────────────────
@@ -238,15 +247,15 @@
     const scoreWidth    = item.viralScore + '%';
     const trendClass    = 'trend-' + item.trend;
     const trendIcon     = item.trend === 'rising' ? '↑' : item.trend === 'steady' ? '→' : '↓';
-    const catBadgeClass = 'badge-' + item.category;
-    const catLabel      = CATEGORIES.find(c => c.id === item.category)?.label || item.category;
+    const catColor      = getCatColor(item.category);
+    const catLabel      = getCatLabel(item.category);
     const numClass      = item.viralScore >= 90 ? 'score-90plus' : item.viralScore >= 70 ? 'score-70plus' : 'score-below';
     const previewIngredients = item.keyIngredients.slice(0, 5);
 
     card.innerHTML = `
       <div class="card-score-bar ${scoreClass}" style="--score-width:${scoreWidth}"></div>
       <div class="card-header">
-        <span class="card-category-badge ${catBadgeClass}">${catLabel}</span>
+        <span class="card-category-badge" style="background:${catColor}22;color:${catColor};border:1px solid ${catColor}55">${catLabel}</span>
         <span class="card-trend-indicator ${trendClass}">${trendIcon} ${capitalize(item.trend)}</span>
       </div>
       <div class="card-body">
@@ -319,8 +328,8 @@
   // ── Modal ─────────────────────────────────────────────────
   function openModal(item) {
     activeModal = item;
-    const catLabel      = CATEGORIES.find(c => c.id === item.category)?.label || item.category;
-    const catBadgeClass = 'badge-' + item.category;
+    const catColor      = getCatColor(item.category);
+    const catLabel      = getCatLabel(item.category);
     const numClass      = item.viralScore >= 90 ? 'score-90plus' : item.viralScore >= 70 ? 'score-70plus' : 'score-below';
     const trendIcon     = item.trend === 'rising' ? '↑' : item.trend === 'steady' ? '→' : '↓';
     const trendClass    = 'trend-' + item.trend;
@@ -329,7 +338,7 @@
       <div class="modal-header">
         <div>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <span class="card-category-badge ${catBadgeClass}">${catLabel}</span>
+            <span class="card-category-badge" style="background:${catColor}22;color:${catColor};border:1px solid ${catColor}55">${catLabel}</span>
             <span class="card-trend-indicator ${trendClass}" style="font-size:0.78rem">${trendIcon} ${capitalize(item.trend)}</span>
           </div>
           <div class="modal-title">${escHtml(item.name)}</div>

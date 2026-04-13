@@ -1,39 +1,31 @@
-# What's Trending — Supabase Integration Plan
+# What's Trending — Task List
 
-## Phase 1: Config & Git Setup
-- [x] Create `.gitignore` (exclude `config.js`, `.env`)
-- [x] Create `config.js` with Supabase URL + anon key (loaded via script tag, gitignored)
+## Phase 1–5: Supabase Integration ✅
+- [x] Config, gitignore, Supabase tables, auth, admin panel, live data fetch
 
-## Phase 2: Supabase Tables
-- [x] `trending_items` table (all fields including description, prep_time, servings)
-- [x] `archive` table
-- [x] `meta` table
-- [x] Row Level Security: public read, admin-only write
-- [x] Seed all 12 items + meta + 4 archive weeks into Supabase
+## Phase 6: Vercel Deployment ✅
+- [x] vercel.json, environment variables, GitHub → Vercel auto-deploy
+- [x] build.sh generates config.js from env vars
+- [x] Automated Monday cron + manual "Update This Week" button
 
-## Phase 3: Auth — Login Page
-- [x] Create `login.html` with email/password form
-- [x] Add Supabase CDN script to `index.html` and `login.html`
-- [x] Auth guard on `index.html` — redirects to login if no session
-- [x] Logout button in app header
-- [x] Admin button in header (visible to admin users only)
+---
 
-## Phase 4: Admin Panel
-- [x] Create `admin.html` — list, add, edit, delete trends
-- [x] Admin-only access check (redirects non-admins)
-- [x] Admin account created: hescoto@icloud.com (role: admin)
+## Phase 7: Dynamic Departments / Categories
 
-## Phase 5: Fetch Live Data in App
-- [x] Replace static `data/trending.js` load with Supabase fetch in `app.js`
-- [x] Loading state while fetching
-- [x] Error handling if fetch fails
+Allow admins to add, edit, and delete departments (Produce, Meat & Fish, Deli, Toys, etc.). Filter bar and trend forms update automatically.
 
-## Phase 6: Vercel Deployment
-- [ ] Add `vercel.json`
-- [ ] Move credentials to Vercel environment variables
-- [ ] Connect GitHub repo → Vercel for auto-deploy
+- [ ] 1. Seed a `categories` table in Supabase via REST API — existing 3 + new supermarket departments
+- [ ] 2. Update `app.js` — load categories from Supabase; use inline color styles for badges (drop hardcoded CSS classes)
+- [ ] 3. Update `admin.html` — populate the category `<select>` dynamically on page load
+- [ ] 4. Add a **Departments** tab in admin.html — list all categories with Add / Edit / Delete
+- [ ] 5. Deploy and verify
+
+### Scope
+- `categories` table: `id` TEXT (e.g. "produce"), `label` TEXT, `icon` TEXT (emoji), `color` TEXT (hex)
+- "All Trends" stays hardcoded in UI — not a real DB category
+- Badge colors switch from CSS classes to inline styles so any new department works automatically
 
 ---
 
 ## Review
-_(to be filled in after Phase 6)_
+_(added after completion)_

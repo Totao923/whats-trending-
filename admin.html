@@ -378,6 +378,7 @@
 <div style="background:#111827;border-bottom:1px solid #1f2937;padding:0 24px;display:flex;gap:0">
   <button class="tab-btn active" id="tab-trends" data-tab="trends">Trends</button>
   <button class="tab-btn" id="tab-users" data-tab="users">Users</button>
+  <button class="tab-btn" id="tab-departments" data-tab="departments">Departments</button>
 </div>
 
 <div class="admin-body" id="admin-body">
@@ -406,9 +407,7 @@
       <div class="field">
         <label>Category</label>
         <select id="f-category">
-          <option value="kitchen">Kitchen</option>
-          <option value="bakery">Bakery</option>
-          <option value="grocery">Grocery</option>
+          <option value="kitchen">Kitchen Dishes</option>
         </select>
       </div>
 
@@ -609,6 +608,20 @@
   // Admin client (service role — bypasses RLS, for user management only)
   const adminDb = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+  // ── Load categories into dropdown and cache ───────────────
+  let allCategories = [];
+
+  async function loadCategorySelect() {
+    const { data } = await adminDb.from('categories').select('*').order('sort_order');
+    allCategories = data || [];
+    const sel = document.getElementById('f-category');
+    sel.innerHTML = allCategories.map(c =>
+      `<option value="${c.id}">${c.label}</option>`
+    ).join('');
+  }
+
+  loadCategorySelect();
+
   // ── Tabs ──────────────────────────────────────────────────
   let currentTab = 'trends';
 
@@ -617,12 +630,14 @@
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentTab = btn.dataset.tab;
+      document.getElementById('btn-add-new').style.display = 'none';
       if (currentTab === 'trends') {
         document.getElementById('btn-add-new').style.display = '';
         loadItems();
-      } else {
-        document.getElementById('btn-add-new').style.display = 'none';
+      } else if (currentTab === 'users') {
         loadUsers();
+      } else if (currentTab === 'departments') {
+        loadDepartments();
       }
     });
   });
@@ -1438,6 +1453,104 @@ Each item must have these exact fields:
   confirmOverlay.addEventListener('click', e => {
     if (e.target === confirmOverlay) { confirmOverlay.classList.add('hidden'); deletingId = null; }
   });
+
+  // ── Departments CRUD ─────────────────────────────────────
+  async function loadDepartments() {
+    adminBody.innerHTML = '<div class="empty">Loading departments…</div>';
+    const { data, error } = await adminDb.from('categories').select('*').order('sort_order');
+    if (error) { adminBody.innerHTML = `<div class="empty">Error: ${esc(error.message)}</div>`; return; }
+    allCategories = data || [];
+
+    adminBody.innerHTML = `
+      <div style="max-width:700px;margin:0 auto">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+          <button class="btn btn-green" id="btn-add-dept">+ Add Department</button>
+        </div>
+        <table class="items-table">
+          <thead><tr><th>Icon</th><th>ID</th><th>Label</th><th>Color</th><th>Order</th><th></th></tr></thead>
+          <tbody id="dept-tbody"></tbody>
+        </table>
+      </div>`;
+
+    const tbody = document.getElementById('dept-tbody');
+    allCategories.forEach(cat => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-size:1.4rem">${cat.icon}</td>
+        <td><code style="color:#6b7280;font-size:0.8rem">${esc(cat.id)}</code></td>
+        <td><strong>${esc(cat.label)}</strong></td>
+        <td><span style="display:inline-flex;align-items:center;gap:6px">
+          <span style="width:14px;height:14px;border-radius:50%;background:${esc(cat.color)};display:inline-block"></span>
+          ${esc(cat.color)}</span></td>
+        <td>${cat.sort_order}</td>
+        <td style="display:flex;gap:8px">
+          <button class="btn btn-sm btn-gray btn-edit-dept" data-id="${esc(cat.id)}">Edit</button>
+          <button class="btn btn-sm btn-gray btn-del-dept" data-id="${esc(cat.id)}" data-label="${esc(cat.label)}" style="color:#ef4444">Delete</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('btn-add-dept').addEventListener('click', () => openDeptModal(null));
+    tbody.querySelectorAll('.btn-edit-dept').forEach(b =>
+      b.addEventListener('click', () => openDeptModal(allCategories.find(c => c.id === b.dataset.id)))
+    );
+    tbody.querySelectorAll('.btn-del-dept').forEach(b =>
+      b.addEventListener('click', () => deleteDept(b.dataset.id, b.dataset.label))
+    );
+  }
+
+  function openDeptModal(cat) {
+    const isNew = !cat;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;z-index:200';
+    overlay.innerHTML = `
+      <div style="background:#1f2937;border-radius:12px;padding:28px;width:360px;display:flex;flex-direction:column;gap:14px">
+        <h3 style="margin:0;font-size:1rem">${isNew ? 'Add Department' : 'Edit Department'}</h3>
+        ${isNew ? `<div class="field"><label>ID <span style="color:#6b7280;font-size:0.75rem">(short, no spaces, e.g. "produce")</span></label>
+          <input id="d-id" placeholder="produce" value="" /></div>` : ''}
+        <div class="field"><label>Label</label><input id="d-label" placeholder="Produce" value="${esc(cat?.label||'')}" /></div>
+        <div class="field"><label>Icon (emoji)</label><input id="d-icon" placeholder="🥦" value="${esc(cat?.icon||'')}" style="font-size:1.3rem;width:60px" /></div>
+        <div class="field"><label>Color (hex)</label><input id="d-color" type="color" value="${cat?.color||'#6b7280'}" style="width:60px;height:36px;padding:2px;border-radius:6px;border:1px solid #374151;background:#111827;cursor:pointer" /></div>
+        <div class="field"><label>Sort Order</label><input id="d-order" type="number" value="${cat?.sort_order??99}" style="width:80px" /></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-gray" id="d-cancel">Cancel</button>
+          <button class="btn btn-green" id="d-save">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#d-cancel').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector('#d-save').addEventListener('click', async () => {
+      const label = overlay.querySelector('#d-label').value.trim();
+      const icon  = overlay.querySelector('#d-icon').value.trim();
+      const color = overlay.querySelector('#d-color').value;
+      const sort_order = parseInt(overlay.querySelector('#d-order').value) || 99;
+      if (!label || !icon) { alert('Label and icon are required.'); return; }
+
+      if (isNew) {
+        const id = overlay.querySelector('#d-id').value.trim().toLowerCase().replace(/\s+/g,'_');
+        if (!id) { alert('ID is required.'); return; }
+        const { error } = await adminDb.from('categories').insert({ id, label, icon, color, sort_order });
+        if (error) { alert('Error: ' + error.message); return; }
+      } else {
+        const { error } = await adminDb.from('categories').update({ label, icon, color, sort_order }).eq('id', cat.id);
+        if (error) { alert('Error: ' + error.message); return; }
+      }
+      overlay.remove();
+      loadDepartments();
+      loadCategorySelect();
+      showToast(isNew ? 'Department added!' : 'Department updated!');
+    });
+  }
+
+  async function deleteDept(id, label) {
+    if (!confirm(`Delete "${label}"? Existing trends with this category will still exist but won't have a matching filter.`)) return;
+    const { error } = await adminDb.from('categories').delete().eq('id', id);
+    if (error) { showToast('Delete failed: ' + error.message, true); return; }
+    showToast('Department deleted');
+    loadDepartments();
+    loadCategorySelect();
+  }
 
   // ── Init ─────────────────────────────────────────────────
   document.getElementById('btn-add-new').style.display = '';
