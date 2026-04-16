@@ -1138,9 +1138,9 @@ Each item must follow this exact structure:
     });
   }
 
-  // ── Weekly Auto-Update (manual trigger — runs in browser to avoid serverless timeout) ──
+  // ── Weekly Auto-Update (manual trigger — batched Claude calls, one per 3 departments) ──
   document.getElementById('btn-weekly-update').addEventListener('click', async () => {
-    if (!confirm('This will archive this week\'s trends and fetch new ones from Claude. Continue?')) return;
+    if (!confirm('This will archive this week\'s trends and fetch new ones from Claude for ALL departments. Continue?')) return;
     const btn = document.getElementById('btn-weekly-update');
     btn.disabled = true;
 
@@ -1151,93 +1151,16 @@ Each item must follow this exact structure:
       return 1 + Math.round(((date - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
     }
 
-    try {
-      // 1. Archive current items
-      btn.textContent = '⏳ Archiving…';
-      const [itemsRes, metaRes] = await Promise.all([
-        adminDb.from('trending_items').select('name'),
-        adminDb.from('meta').select('*').order('id', { ascending: false }).limit(1).single()
-      ]);
-      if (itemsRes.data && itemsRes.data.length > 0) {
-        const m = metaRes.data || {};
-        await adminDb.from('archive').insert({
-          week_label:  m.week_label  || 'Previous Week',
-          week_number: m.week_number || 0,
-          year:        m.year        || new Date().getFullYear(),
-          items:       itemsRes.data.map(i => i.name)
-        });
-      }
+    function diffInt(d) {
+      if (typeof d === 'number') return Math.min(3, Math.max(1, Math.round(d)));
+      const s = String(d).toLowerCase();
+      if (s.includes('hard') || s.includes('3')) return 3;
+      if (s.includes('med')  || s.includes('2')) return 2;
+      return 1;
+    }
 
-      // 2. Call Claude via existing research proxy
-      btn.textContent = '⏳ Calling Claude…';
-      const now = new Date();
-      const wn  = weekNum(now);
-      const yr  = now.getFullYear();
-      const apiUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '/api/research';
-
-      // Build category list from DB (loaded at page init)
-      const activeCats = allCategories.length > 0
-        ? allCategories.map(c => `${c.id} (${c.label})`).join(', ')
-        : 'kitchen, bakery, grocery';
-
-      const claudeRes = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-opus-4-6',
-          max_tokens: 8000,
-          messages: [{ role: 'user', content: `You are a trend analyst for a supermarket chain research team. Research what is currently trending this week (${now.toDateString()}) across these supermarket departments: ${activeCats}.
-
-Return ONLY a JSON array of exactly 12 items spread across the most trending departments. No markdown, no explanation, just raw JSON. Keep all string values SHORT (under 100 characters each).
-
-The "category" field must be one of these exact IDs: ${allCategories.map(c => c.id).join(', ')}.
-
-Each item must have these exact fields:
-{
-  "category": "produce",
-  "name": "Item name",
-  "tagline": "One short catchy sentence",
-  "viral_score": 75,
-  "trend": "🔥 Viral",
-  "platforms": ["TikTok","Instagram"],
-  "hashtags": ["#example"],
-  "description": "One or two sentences max.",
-  "key_ingredients": ["ingredient1","ingredient2"],
-  "difficulty": "Easy",
-  "prep_time": "30 mins",
-  "servings": "4 servings",
-  "supermarket_angle": "Brief actionable tip for supermarkets.",
-  "store_section": ["Produce"],
-  "estimated_cost": "$8-12",
-  "weekly_mentions": 45000,
-  "added_week": ${wn}
-}` }]
-        })
-      });
-
-      if (!claudeRes.ok) {
-        const e = await claudeRes.json().catch(() => ({}));
-        throw new Error(e.error?.message || `Claude error ${claudeRes.status}`);
-      }
-      const claudeData = await claudeRes.json();
-      const raw = claudeData.content[0].text.trim().replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/i,'');
-      const newItems = JSON.parse(raw);
-      if (!Array.isArray(newItems) || newItems.length === 0) throw new Error('Claude returned no items');
-
-      // 3. Replace trending items
-      btn.textContent = '⏳ Saving…';
-
-      // Map difficulty string → integer (DB stores 1/2/3)
-      function diffInt(d) {
-        if (typeof d === 'number') return Math.min(3, Math.max(1, Math.round(d)));
-        const s = String(d).toLowerCase();
-        if (s.includes('hard') || s.includes('3')) return 3;
-        if (s.includes('med')  || s.includes('2')) return 2;
-        return 1;
-      }
-
-      // Sanitize items to match DB schema exactly
-      const cleanItems = newItems.map((item, idx) => ({
+    function cleanItem(item, idx) {
+      return {
         id:                idx + 1,
         category:          item.category,
         name:              item.name,
@@ -1257,7 +1180,101 @@ Each item must have these exact fields:
         weekly_mentions:   parseInt(item.weekly_mentions) || 0,
         added_week:        parseInt(item.added_week) || wn,
         videos:            []
-      }));
+      };
+    }
+
+    const now    = new Date();
+    const wn     = weekNum(now);
+    const yr     = now.getFullYear();
+    const apiUrl = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '/api/research';
+
+    try {
+      // 1. Archive current items
+      btn.textContent = '⏳ Archiving…';
+      const [itemsRes, metaRes] = await Promise.all([
+        adminDb.from('trending_items').select('name'),
+        adminDb.from('meta').select('*').order('id', { ascending: false }).limit(1).single()
+      ]);
+      if (itemsRes.data && itemsRes.data.length > 0) {
+        const m = metaRes.data || {};
+        await adminDb.from('archive').insert({
+          week_label:  m.week_label  || 'Previous Week',
+          week_number: m.week_number || 0,
+          year:        m.year        || yr,
+          items:       itemsRes.data.map(i => i.name)
+        });
+      }
+
+      // 2. Split departments into batches of 3, call Claude once per batch
+      const cats   = allCategories.length > 0 ? allCategories : [
+        { id:'kitchen', label:'Kitchen Dishes' },
+        { id:'bakery',  label:'Bakery' },
+        { id:'grocery', label:'Grocery Items' }
+      ];
+      const BATCH  = 3;
+      const batches = [];
+      for (let i = 0; i < cats.length; i += BATCH) batches.push(cats.slice(i, i + BATCH));
+
+      const allNew = [];
+
+      for (let b = 0; b < batches.length; b++) {
+        const batch     = batches[b];
+        const batchNums = `${b + 1} of ${batches.length}`;
+        btn.textContent = `⏳ Claude… batch ${batchNums}`;
+
+        const deptList   = batch.map(c => `${c.id} (${c.label})`).join(', ');
+        const validIds   = batch.map(c => c.id).join(', ');
+        const itemCount  = batch.length * 5;   // 5 items per dept
+
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-opus-4-6',
+            max_tokens: 8000,
+            messages: [{ role: 'user', content: `You are a trend analyst for a supermarket chain. Research what is trending this week (${now.toDateString()}) for these departments: ${deptList}.
+
+Return ONLY a JSON array of exactly ${itemCount} items — 5 per department. No markdown, no explanation, just raw JSON. Keep all string values SHORT (under 100 characters).
+
+The "category" field must be one of: ${validIds}.
+
+Each item must have these exact fields:
+{
+  "category": "${batch[0].id}",
+  "name": "Item name",
+  "tagline": "One short catchy sentence",
+  "viral_score": 75,
+  "trend": "🔥 Viral",
+  "platforms": ["TikTok","Instagram"],
+  "hashtags": ["#example"],
+  "description": "One or two sentences.",
+  "key_ingredients": ["ingredient1","ingredient2"],
+  "difficulty": "Easy",
+  "prep_time": "30 mins",
+  "servings": "4 servings",
+  "supermarket_angle": "Brief actionable tip.",
+  "store_section": ["${batch[0].label}"],
+  "estimated_cost": "$8-12",
+  "weekly_mentions": 45000,
+  "added_week": ${wn}
+}` }]
+          })
+        });
+
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(`Batch ${batchNums} Claude error: ${e.error?.message || res.status}`);
+        }
+        const data    = await res.json();
+        const rawText = data.content[0].text.trim().replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/i,'');
+        const parsed  = JSON.parse(rawText);
+        if (!Array.isArray(parsed) || parsed.length === 0) throw new Error(`Batch ${batchNums} returned no items`);
+        allNew.push(...parsed);
+      }
+
+      // 3. Delete old items and insert all new ones
+      btn.textContent = '⏳ Saving…';
+      const cleanItems = allNew.map((item, idx) => cleanItem(item, idx));
 
       const delRes = await adminDb.from('trending_items').delete().not('id', 'is', null);
       if (delRes.error) throw new Error('Delete failed: ' + delRes.error.message);
@@ -1277,7 +1294,7 @@ Each item must have these exact fields:
       });
       if (metaIns.error) throw new Error('Meta update failed: ' + metaIns.error.message);
 
-      alert(`✅ Done! ${newItems.length} new trends added for Week ${wn}, ${yr}.`);
+      alert(`✅ Done! ${cleanItems.length} trends added across ${cats.length} departments for Week ${wn}, ${yr}.`);
       location.reload();
     } catch (err) {
       alert('❌ Update failed: ' + err.message);

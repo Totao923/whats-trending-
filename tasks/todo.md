@@ -8,24 +8,29 @@
 - [x] build.sh generates config.js from env vars
 - [x] Automated Monday cron + manual "Update This Week" button
 
----
+## Phase 7: Dynamic Departments ✅
+- [x] categories table seeded in Supabase (12 departments)
+- [x] app.js loads categories dynamically, inline badge colors
+- [x] admin.html category dropdown populated from DB
+- [x] Departments tab with Add / Edit / Delete
 
-## Phase 7: Dynamic Departments / Categories
-
-Allow admins to add, edit, and delete departments (Produce, Meat & Fish, Deli, Toys, etc.). Filter bar and trend forms update automatically.
-
-- [ ] 1. Seed a `categories` table in Supabase via REST API — existing 3 + new supermarket departments
-- [ ] 2. Update `app.js` — load categories from Supabase; use inline color styles for badges (drop hardcoded CSS classes)
-- [ ] 3. Update `admin.html` — populate the category `<select>` dynamically on page load
-- [ ] 4. Add a **Departments** tab in admin.html — list all categories with Add / Edit / Delete
-- [ ] 5. Deploy and verify
-
-### Scope
-- `categories` table: `id` TEXT (e.g. "produce"), `label` TEXT, `icon` TEXT (emoji), `color` TEXT (hex)
-- "All Trends" stays hardcoded in UI — not a real DB category
-- Badge colors switch from CSS classes to inline styles so any new department works automatically
+## Phase 8: Full Department Coverage in Weekly Update ✅
+- [x] Departments split into batches of 3
+- [x] Claude called once per batch (5 items per dept, ~15 per call)
+- [x] Progress shown to admin: "Claude… batch 2 of 4"
+- [x] All results combined then saved in one delete + insert
 
 ---
 
 ## Review
-_(added after completion)_
+
+### What was built
+A PWA for supermarket research teams that tracks weekly food trends across all store departments. Key features:
+- Live Supabase backend (trending_items, archive, meta, categories tables)
+- Auth with first-login password change flow
+- Admin panel: manage trends, users, departments
+- Automated Monday cron + manual "Update This Week" button (batched Claude calls, 5 items per dept)
+- Research Agent for on-demand trend lookups
+- Rankings section (month/quarter/year archive)
+- Dynamic departments — admins can add/edit/delete from the UI
+- Deployed on Vercel with build.sh generating config from env vars
